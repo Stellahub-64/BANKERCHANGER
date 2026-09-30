@@ -16,7 +16,7 @@ const AUTH_TIMEOUT_MS = 5_000; // 5 seconds to send auth message
 export type ActivityEvent =
   | { type: 'trade'; marketId: string; outcomeId: string; side: string; sharesAmount: number; priceBps: number; timestamp: string }
   | { type: 'dispute'; marketId: string; proposedOutcomeId: string }
-  | { type: 'resolved'; marketId: string; winningOutcomeId: string };
+  | { type: 'market:resolved'; marketId: string; outcome: string; winner_odds: number; timestamp: string };
 
 type AuthMsg = { type: 'auth'; token: string };
 type SubscribeMsg = { type: 'subscribe_activity'; marketId: string };
@@ -149,7 +149,7 @@ export class ActivityFeed {
   /** Publish an activity event to all subscribers of the market. */
   publish(event: ActivityEvent): void {
     const { marketId } = event as { marketId: string };
-    if (!this.rateLimiter.allow(marketId)) return;
+    if (event.type !== 'market:resolved' && !this.rateLimiter.allow(marketId)) return;
 
     const sockets = this.subscriptions.get(marketId);
     if (!sockets?.size) return;
@@ -176,4 +176,18 @@ export function initActivityFeed(server: Server): ActivityFeed {
 export function getActivityFeed(): ActivityFeed {
   if (!_feed) throw new Error('ActivityFeed not initialised');
   return _feed;
+}
+
+export function broadcastMarketResolved(
+  marketId: string,
+  outcome: string,
+  winner_odds: number,
+): void {
+  _feed?.publish({
+    type: 'market:resolved',
+    marketId,
+    outcome,
+    winner_odds,
+    timestamp: new Date().toISOString(),
+  });
 }

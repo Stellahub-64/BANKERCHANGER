@@ -13,6 +13,7 @@ import { pool } from '../config/db';
 import { rpc, Address, xdr } from '@stellar/stellar-sdk';
 import { subscribeToContractEvents, fetchHistoricalEvents } from '../services/StellarService';
 import { cacheDeletePattern } from '../services/cache.service';
+import { broadcastMarketResolved } from '../websocket/realtime';
 
 // Raw event shape returned by Stellar RPC / Horizon
 export interface RawStellarEvent {
@@ -463,6 +464,7 @@ export async function handleMarketLocked(event: RawStellarEvent): Promise<void> 
 export async function handleMarketResolved(event: RawStellarEvent): Promise<void> {
   const p = parsePayload(event.data);
   const client = await pool.connect();
+  let winnerOdds = 0;
   try {
     await client.query('BEGIN');
 
@@ -473,6 +475,24 @@ export async function handleMarketResolved(event: RawStellarEvent): Promise<void
         WHERE market_id = $4`,
       [p.outcome, event.ledger_close_time, p.oracle_address ?? null, p.market_id],
     );
+
+    const { rows: [market] } = await client.query(
+      `SELECT pool_a, pool_b, pool_draw, total_pool, fee_bps
+         FROM markets WHERE market_id = $1`,
+      [p.market_id],
+    );
+    if (market && p.outcome !== 'no_contest') {
+      const winningPool = BigInt(
+        p.outcome === 'fighter_a' ? market.pool_a :
+        p.outcome === 'fighter_b' ? market.pool_b :
+        p.outcome === 'draw' ? market.pool_draw : '0',
+      );
+      const totalPool = BigInt(market.total_pool);
+      if (winningPool > 0n && totalPool > 0n) {
+        const fee = (totalPool * BigInt(market.fee_bps)) / 10000n;
+        winnerOdds = Number(((totalPool - fee) * 10000n) / winningPool);
+      }
+    }
 
     // Insert OracleReport record
     await client.query(
@@ -511,6 +531,10 @@ export async function handleMarketResolved(event: RawStellarEvent): Promise<void
     throw err;
   } finally {
     client.release();
+  }
+
+  if (typeof p.market_id === 'string' && typeof p.outcome === 'string') {
+    broadcastMarketResolved(p.market_id, p.outcome, winnerOdds);
   }
 
   // Invalidate all Redis cache keys for this market
