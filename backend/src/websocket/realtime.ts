@@ -7,7 +7,6 @@ import { logger } from '../utils/logger';
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
-const JWT_SECRET = process.env.JWT_SECRET ?? 'dev-jwt-secret-change-me';
 const AUTH_TIMEOUT_MS = 5_000; // 5 seconds to send auth message
 
 // ---------------------------------------------------------------------------
@@ -77,8 +76,11 @@ export class ActivityFeed {
   }
 
   private verifyToken(token: string): boolean {
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) return false;
+
     try {
-      jwt.verify(token, JWT_SECRET);
+      jwt.verify(token, jwtSecret);
       return true;
     } catch {
       return false;
