@@ -20,6 +20,8 @@ pub enum ContractError {
     NotFactory = 3,
     /// Market contract is not registered or approved
     UnregisteredMarket = 6,
+    /// Pending admin transfer proposal has expired
+    PendingAdminExpired = 7,
 
     // ── Market State ───────────────────────────────────────
     /// Requested market ID does not exist
@@ -68,6 +70,12 @@ pub enum ContractError {
     ResolutionWindowExpired = 31,
     /// Two or more conflicting oracle reports were submitted
     ConflictingOracleReport = 32,
+    /// Resolution was attempted before the scheduled fight start
+    MarketNotStarted = 33,
+    /// finalize_resolution called before the dispute cooldown window has elapsed
+    DisputeCooldownActive = 34,
+    /// finalize_resolution called on a market not in ResolutionPending state
+    ResolutionNotPending = 35,
 
     // ── Treasury ───────────────────────────────────────────
     /// Fee withdrawals are temporarily paused
@@ -78,6 +86,10 @@ pub enum ContractError {
     InsufficientBalance = 42,
     /// Market is not approved to deposit or receive fees
     MarketNotApproved = 43,
+    /// A fee extraction is already in progress; concurrent call rejected
+    FeeExtractionInProgress = 44,
+    /// The daily withdrawal cap has been reached for today's bucket
+    DailyCapReached = 45,
 
     // ── Factory ────────────────────────────────────────────
     /// Factory is paused; new market creation is disabled
@@ -86,8 +98,16 @@ pub enum ContractError {
     OracleAlreadyWhitelisted = 51,
     /// Too many markets were requested in one query
     TooManyMarkets = 52,
+    /// WASM hash for market contract has not been set by admin
+    WasmHashNotSet = 53,
+    /// Oracle address is not whitelisted
+    OracleNotWhitelisted = 54,
 
     // ── Reentrancy ─────────────────────────────────────────
     /// A claim or refund transfer is already in progress
     ReentrancyGuard = 60,
+
+    // ── Slippage ────────────────────────────────────────────
+    /// Computed shares out are below the caller's min_shares_out tolerance
+    SlippageExceeded = 61,
 }

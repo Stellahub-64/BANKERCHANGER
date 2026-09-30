@@ -76,4 +76,16 @@ export const cronDistributionsArchived = new Counter({
   help: 'Total failed distributions rows archived by cleanup cron',
 });
 
+export const cronBlockchainEventsDeleted = new Counter({
+  name: 'cron_blockchain_events_deleted_total',
+  help: 'Total processed blockchain_events rows deleted by cleanup cron',
+});
+
+// ── Indexer Gap Recovery Metrics (Issue #673) ─────────────────────────────────
+
+export const indexerGapBackfillTotal = new Counter({
+  name: 'indexer_gap_backfill_total',
+  help: 'Total missing ledgers backfilled during gap recovery',
+});
+
 export { register };
